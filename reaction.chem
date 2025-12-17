@@ -1,0 +1,23 @@
+.cstart
+# diene:
+B1: bond down
+   double bond 60 from B1.start
+   double bond 120 from B1.end
+   bond -120 from B1.end
+
+"+" at B1 + (0.3,-0.1)
+
+# dienophile:
+B2: double bond down at B1 + (0.50,0)
+   bond 60 at B2.start
+   double bond up ; O
+
+bond right at B1 + (0.75,-0.1)
+   arrow right
+
+# product:
+R1: ring6 at B1 + (1.55,-0.1) double 5,6
+   bond 60 at R1.V2
+   double bond up ; O
+   bond -120 from R1.V5
+.cend

@@ -1,0 +1,24 @@
+.cstart
+# 2-methylquinoline:
+R1: ring pointing 60 double 1,2 3,4 5,6
+  R2: ring pointing 60 with .V5 at R1.V1 with .V4 at R1.V2 \
+    double 6,1 2,3 put N at 3
+  bond 120 from R2.V2
+
+# penicillin, lactam backbone:
+R3: ring4 pointing 45 at R2 + (1.00,0) put N at 2
+  R4: ring5 pointing 19 with .V5 at R3.V1 with .V4 at R3.V2 put N at 4
+  B1: double bond -130 from R3.V3 ; O
+
+# steroid backbone, irregular pentagon:
+A1: ring6 pointing 60 at R4 + (0.75,0)
+B1: ring6 pointing 60 with .V4 at A1.V2
+C1: ring6 pointing 60 with .V3 at B1.V1
+D1: flatring5 with .V4 at C1.V2
+
+# steroid backbone, regular pentagon:
+A2: ring6 pointing 60 at A1 + (2.00,0)
+B2: ring6 pointing 60 with .V4 at A2.V2
+C2: ring6 pointing 60 with .V3 at B2.V1
+D2: ring5 pointing right with .V3 at C2.V2
+.cend

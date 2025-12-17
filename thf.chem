@@ -1,0 +1,13 @@
+.cstart
+R3:  ring3 put O at 1
+R5:  ring5 at R3 + (0.75,0) put O at 1
+R6:  ring6 at R5 + (0.75,0) put O at 1 put O at 4
+
+R7a: ring6 at R6 + (0.75,0) put O at 1 put NH at 4  # wrong depiction
+
+R7b: ring6 at R7a + (0.75,0) put N at 4
+   H below R7b.V4
+
+R7c: ring3 at R7b + (0.75,0) put N at 1
+   H above R7c.V1
+.cend

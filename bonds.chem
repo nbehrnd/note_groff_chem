@@ -1,0 +1,37 @@
+.cstart
+# meso tartaric acid
+HO
+B1: bond 120
+  double bond down ; O
+B2: bond 60 from B1.end
+  front bond up ; OH
+B3: bond 120 from B2.end
+  back bond down ; OH
+B4: bond 60 from B3.end
+  double bond up ; O
+  bond 120 from B4.end ; OH
+
+# nitrogen
+N at B4 + (0.75, 0)
+triple bond right ; N
+  
+# proline
+R1: ring5 pointing down at B4 + (1.50,0) put N at 1
+  H below R1.V1
+B5: bond 120 from R1.V5
+double bond down ; O
+bond 60 from B5.end ; OH
+back bond 60 from R1.V5 ; H
+
+# hydrogen-bond dimer of acetic acid
+# a revision were useful
+B6: bond right at B4 + (3, 0)
+  B7: double bond 30 ; O
+  B8: bond 150 from B6.end ; OH
+  bond dotted right ; O
+  
+  B9: double bond 30
+  bond right
+  B10: bond -30 from B9.end ; HO
+  bond from B7.end to B10.end dotted
+.cend

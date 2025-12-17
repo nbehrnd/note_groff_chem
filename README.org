@@ -1,0 +1,546 @@
+#+OPTIONS: # toc:nil
+#+TITLE: =chem=, a preprocessor of =groff=
+
+=chem= is a preprocessor to =pic= of the [[https://www.gnu.org/software/groff/][=groff=]] typesetter ([[https://en.wikipedia.org/wiki/Groff_(software)][Wikipedia
+article]] about =groff=), jointly developed by Jon L. Bentley, Lynn
+W. Jelinski, and Brian W. Kernighan in 1987.  Because =groff= is used
+to format man and info pages on Linux distributions, it is readily
+available there (if not already installed by default).
+
+This repository recapitulates a couple of hints found in and around
+the man page of =chem=, the paper by Bentley /et. al./, discussions on
+the [[http://lists.gnu.org/mailman/listinfo/groff/][groff mailing list]], etc., in a sequence suitable for me.  The
+description here likely is incomplete and may contain errors.  The
+interested reader is welcome to drop note how this document could be
+improved further.
+
+* background
+
+"[The] small language" of =chem= describes structure elements in code
+blocks consisting of one or multiple template structures, for instance
+
+#+begin_src sh :results nil :tangle benzene.chem
+.cstart
+benzene
+.cend
+#+end_src
+
+#+RESULTS:
+
+saved as =benzene.chm=.
+
+- To benefit of this structure /within/ a roff document, this has to
+  be processed by the picture preprocessor (flag =-p= below) before
+  being managed by the groff processor to provide a pdf file, e.g.
+
+  #+begin_src bash :results nil
+chem benzene.chm | groff -p -ms document.ms -Tpdf > output.pdf
+  #+end_src
+
+  to yield
+
+  [[./benzene.chem.png]]
+  
+- Especially if only interested in the depiction of the structure
+  /alone/ (examples below), a call like
+
+  #+begin_src bash :results nil
+groff -j benzene.chm -Tpdf > output.pdf
+  #+end_src
+
+  provides a drawing of the individual structure on a page (default: letter
+  format, portrait orientation).
+- Subsequently, the vector format output (e.g., by flag =-Tps= to
+  provide a postscript file) can be exported to (bitmap) formats by
+  editors like inkscape.  On the CLI, one recipe to yield a .png is
+
+  #+begin_src bash :results nil
+# write a postscript about the structure:
+groff -j benzene.chm -Tps > benzene.ps
+# export an .eps with not too tight bounding box
+ps2eps -l benzene.ps
+# rasterize the .eps to yield a .png
+gs -dNOPAUSE -dBATCH -q \
+   -sDEVICE=png16m \
+   -r300 \
+   -sOutputFile=benzene.png \
+   benzene.eps
+  #+end_src
+
+* code organization
+
+- Within a =chem= code block, optional comments start with the number
+  sign, =#=.
+- Groups of instructions can be separated by other groups by one or
+  multiple blank lines.  Similar to scripts for the BASH shell, lines
+  considered overly long may be visually broken with a trailing back
+  slash, =\=.
+- Optional indentation of lines (like after the continuation sign of
+  the backslash, though not limited to this one) may use explicit
+  spaces, or tabulator spaces.  For =chem=, indentation however is not
+  functional.
+- Particular motifs of rings, bonds, atoms, etc. can be annotated by a
+  label.  Later sections of the source code then can refer to them.
+  Such a label must start by an uppercase character (=A-Z=), may be
+  followed by either upper case / lower case characters, or digits
+  (=[0-9]=), and must be terminated by colon. Examples include =BP=
+  (for branching point), or =R= (for ring) as in
+
+  #+begin_src sh :results nil
+.cstart
+R3: ring3
+.cend
+  #+end_src
+- Such a label can be both a logical anchor (go back to [e.g., the
+  root of] this motif), and /spatial/ reference (e.g., from here, go
+  x inches to the right, y inches down).  This allows to align
+  multiple structures, for instance in a reaction.
+
+* defining rings
+
+Rings are defined in the pattern of
+
+#+begin_src sh :results nil
+[LABEL:] ring[N] [DIRECTION] [HETEROATOMS] [DOUBLEBOND PATTERN]
+#+end_src
+
+** template rings
+
+- =chem= provides regular polygons as templates =ring3=, =ring4=,
+  =ring5=, =ring6=, =ring7=, and =ring8=.  They are complemented by
+  =flatring= derived from the truncation of a regular hexagon:
+
+  #+begin_src sh :results nil :tangle default_rings.chem :exports none
+.cstart
+R3: ring3
+R4: ring4 at R3 + (0.75,0)
+R5: ring5 at R4 + (0.75,0)
+R6: ring6 at R5 + (0.75,0)
+R7: ring7 at R6 + (0.75,0)
+R8: ring8 at R7 + (0.75,0)
+
+R5b: flatring at R8 + (0.75,0)
+.cend
+  #+end_src
+
+  [[./default_rings.chem.png]]
+
+- The keyword =ring6= can be replaced by the shorthand =ring=.
+
+- In this /default/ orientation, the top vertex is assigned index
+  =V1=, the other vertices follow in clockwise direction.  Vertices
+  can be used to explicitly /put/ an atom /at/ a particular position,
+  for instance for tetrahydrofurane
+
+  #+begin_src sh :results nil :tangle THF.chem
+.cstart
+ring5 put O at 1
+.cend
+  #+end_src
+
+  #+RESULTS:
+
+  [[./THF.chem.png]]
+
+- Depending on relative orientation of the ring (/vide infra/), one
+  can substitute the implicit carbon atoms by hetero atoms
+
+  #+begin_src sh :results nil :tangle thf.chem
+.cstart
+R3:  ring3 put O at 1
+R5:  ring5 at R3 + (0.75,0) put O at 1
+R6:  ring6 at R5 + (0.75,0) put O at 1 put O at 4
+
+R7a: ring6 at R6 + (0.75,0) put O at 1 put NH at 4  # wrong depiction
+
+R7b: ring6 at R7a + (0.75,0) put N at 4
+   H below R7b.V4
+
+R7c: ring3 at R7b + (0.75,0) put N at 1
+   H above R7c.V1
+.cend
+  #+end_src
+
+  [[./thf.chem.png]]
+
+  about ethylene oxide, tetrahdydrofuran, or 1,4-dioxane.  Note that
+  in case of piperidine the default approach (=R7a=) is wrong
+  (Brecher, rule GR2.1.15).  The depicted position of the hydrogen is
+  to be adjvertically adjusted to be =below= the nitrogen (=R7b=), or
+  in the case of aziridine =above= the corresponding nitrogen (=R7c=).
+  Read e.g., =R7b.V4= as vertex 4 of the cycle labeled =R7b=.
+
+** ring orientation
+
+- The relative orientation of an individual ring (and later, direction
+  of a bond) to the coordinate system of the drawing plane can be
+  altered with the optional parameter =pointing= and either a keyword
+  (e.g., =left=), or an integer (positive or negative).
+
+  #+begin_src sh :results nil :tangle pointing.chem
+.cstart
+R1: flatring pointing up
+R2: flatring pointing down at R1 + (0.75,0)
+
+R3: ring5 at R2 + (0.75,0)
+R4: ring5 pointing left at R3 + (0.75,0)
+R5: ring5 pointing right at R4 + (0.75,0)
+
+R6: ring4 pointing 45 at R5 + (0.75,0)
+.cend
+  #+end_src
+
+  [[./pointing.chem.png]]
+
+- A rotation equally rotates the cycle's individual definition of
+  positions and vertices:
+
+  #+begin_src sh :results nil :tangle rotate_THF.chem
+.cstart
+R1:  ring5 put O at 1
+R2:  ring5 pointing right put O at 1 at R1 + (0.75, 0)
+.cend
+  #+end_src
+
+  [[./rotate_THF.chem.png]]
+
+  In more complex (polycyclic) structures, it can be helpful to
+  temporarily add "a dummy atom" to guide the orientation.
+
+** bonds within and from rings
+
+- The present =groff= (version 1.23.0) provides double and triple
+  bonds.  Used within a cycle, start and vicinal end have to be
+  determined by the user. To prevent an overlap with an heteroatom,
+  =chem= automatically shortens the inner of the double bond a little
+  bit.
+
+  The Thiele ring equally can be installed by the optional keyword
+  =aromatic=:
+
+  #+begin_src sh :results nil :tangle insaturated_cycles.chem
+.cstart
+R1: ring6 double 1,2 3,4 5,6
+
+R2: ring7 at R1 + (0.75,0) aromatic
+  "+" at R2
+
+R3: ring5 at R2 + (0.75, 0) double 2,3 4,5 put N at 1 put N at 3
+  H above R3.V1
+
+R4: ring5 pointing down at R3 + (0.75, 0) double 2,3 4,5 put N at 1 put N at 3
+  H below R4.V1
+
+R5: ring6 at R4 + (0.75,0) put O+ at 2 double 2,3  
+
+R6: ring8 triple 3,4 at R5 + (0.75,0)
+.cend
+  #+end_src
+
+  [[./insaturated_cycles.chem.png]]
+
+- Bonds outside cycles are defined in the pattern of  
+
+  #+begin_src sh :results nil
+[BONDTYPE] [ORIENTATION] [STARTING POINT] [: SUBSTITUENT]
+  #+end_src
+
+  of which the provision of =BONDTYPE= is mandatory.  In addition to
+  =double= and =triple=, present =groff= (version 1.23.0) provides the
+  keywords of
+
+  - =bond= (for single bond)
+  - =double bond=
+  - =triple bond=
+  - =back bond=
+  - =front bond=
+
+  Recently, the addition of new bond types (e.g., partial double
+  bonds) to the future release of groff 1.24.0 were discussed.
+
+- Regardless of the degree of insaturation, the default orientation of
+  a bond outside a cycle runs from the left to the right hand side.
+  This is equal to an angle of 90 degrees (clockwise counting) while
+  any positive or negative integer can be used to adjust the
+  orientation.  In addition to this, =chem= allows a definition of the
+  direction by the following shorthands
+
+  | angle       | keywords          |
+  |-------------+-------------------|
+  | 0           | =up=              |
+  | 90, or -270 | =right= (default) |
+  | 180         | =down=            |
+  | -90, or 270 | =left=            |
+
+- The starting point of a bond from a cycle to a substituent is the
+  corresponding vertex of the labeled cycle, e.g. =R2.V4=.
+
+- In case no (optional) substitutent is defined, =chem= is going to
+  draw a strut as commonly used for terminal methyl groups.  The
+  substituent however can be an atom, or a group of atoms.
+
+  #+begin_src sh :results nil :tangle bonds_in_rings.chem
+.cstart
+R1: ring6 put N at 4 double 1,2 3,4 5,6
+  bond 120 from R1.V3
+  bond -120 from R1.V5
+
+R2: ring6 at R1 + (1.00,0) double 1,2 3,4 5,6
+  bond up from R2.V1 ; OCH3
+
+R3: ring6 at R2 + (0.75,0) double 3,4 6,1
+  bond 0 from R3.V1 ; O
+  CH3 right of O  # note this visual adjustment vs R2
+
+R4: ring5 at R3 + (0.75,0) double 2,3 4,5
+  doublebond 0 from R4.V1 ; CH2
+.cend
+  #+end_src
+
+  [[./bonds_in_rings.chem.png]]
+
+** joining rings
+
+=chem= allows to
+
+- to join two rings across ends of a bond, as in 1,1'-bipyridine.
+- let two rings share an atom in common, as for instance in spiro
+  compounds
+- two rings fused alongside each other with adjacent bridge atoms, as
+  for instance for naphthalene.
+
+These  methods can be freely combined with each other.
+
+*** joining across a bond's termini
+
+Note to check each cycle's /individual/ definition of vertices and
+/own/ orientation (=pointing=) as illustrated in the first example
+below.
+
+#+begin_src sh :results nil :tangle join_rings_via_bonds.chem
+.cstart
+R1: ring6 put N at 3 double 1,2 3,4 5,6
+  B1: bond right from R1.V1
+R2: ring5 pointing -90 with .V1 at B1.end
+  bond right from R2.V2
+
+# 1,1'-bipyridine:
+R3: ring6 pointing right at R1 + (1.25,0) put N at 2 double 1,2 3,4 5,6
+  B2: bond right from R3.V1
+  R4: ring6 pointing left with .V1 at B2.end put N at 2 \
+      double 1,2 3,4 5,6
+
+# tetrathiafulvalene:
+R5: ring5 pointing right at R4 + (0.75,0) put S at 2 put S at 5 \
+    double 3,4
+  B3: doublebond
+  R6: ring5 pointing left with .V1 at B3.end put S at 2 put S at 5 \
+      double 3,4
+.cend
+ #+end_src
+
+
+[[./join_rings_via_bonds.chem.png]] 
+
+*** joining by one atom in common
+
+Read a line like
+
+#+begin_src sh :results nil
+R4: ring5 with .V4 at R3.V2
+#+end_src
+
+to attach the current ring =R4= at its vertex =V4= with the vertex
+=V2= of element =R3=.
+
+#+begin_src sh :results nil :tangle join_rings_by_one_atom.chem
+.cstart
+# spirodiketone:
+# <https://en.wikipedia.org/wiki/Spiro_compound#Chirality>
+R1: ring6 pointing right
+  R2: ring6 pointing left
+  doublebond 30 from R1.V6 ; O
+  doublebond 210 from R2.V6 ; O
+
+# sprioketal of cyclohexanone:
+# <https://en.wikipedia.org/wiki/Spiro_compound#Heterocyclic_spiro_compounds>
+R3: ring6 at R2 + (0.75,0)
+  R4: ring5 with .V4 at R3.V2 pointing 20 put O at 3 put O at 5
+.cend
+#+end_src
+  #+RESULTS:
+
+[[./join_rings_by_one_atom.chem.png]]
+
+*** joining along a side in common
+
+- In case of an explicit (hetero) atom serving as bridge atom to
+  multiple rings, for better legibility of the rendering, the
+  definition should be repeated for each ring.  See the example about
+  the lactam core of penicillin.
+- Note that you don't need to stick with =R1:=, =R2:=, etc. labels if
+  e.g., the steroid nomenclature is more suitable for you (third and
+  fourth example, cf. IUPAC's steroid rule 2S-1).
+  
+
+  #+begin_src sh :results nil :tangle join_by_sides.chem
+.cstart
+# 2-methylquinoline:
+R1: ring pointing 60 double 1,2 3,4 5,6
+  R2: ring pointing 60 with .V5 at R1.V1 with .V4 at R1.V2 \
+    double 6,1 2,3 put N at 3
+  bond 120 from R2.V2
+
+# penicillin, lactam backbone:
+R3: ring4 pointing 45 at R2 + (1.00,0) put N at 2
+  R4: ring5 pointing 19 with .V5 at R3.V1 with .V4 at R3.V2 put N at 4
+  B1: double bond -130 from R3.V3 ; O
+
+# steroid backbone, irregular pentagon:
+A1: ring6 pointing 60 at R4 + (0.75,0)
+B1: ring6 pointing 60 with .V4 at A1.V2
+C1: ring6 pointing 60 with .V3 at B1.V1
+D1: flatring5 with .V4 at C1.V2
+
+# steroid backbone, regular pentagon:
+A2: ring6 pointing 60 at A1 + (2.00,0)
+B2: ring6 pointing 60 with .V4 at A2.V2
+C2: ring6 pointing 60 with .V3 at B2.V1
+D2: ring5 pointing right with .V3 at C2.V2
+.cend
+  #+end_src
+
+  [[./join_by_sides.chem.png]]
+
+* bonds
+
+- Regular single, double, triple bonds are supported; for
+  stereochemisty, back bonds and front bonds.  If not explicitly
+  specified differently, they depart from the last point of reference
+  and run from the left to the right hand side.  However, as shown in
+  earlier examples, their direction can be adjusted by keywords (=up=,
+  =right=, =down=, =left=) as well as any positive/negative integers
+  (e.g., =0=, =60=, =120=, =-120=, etc).
+- The syntax equally provides a possibility to modify the length of
+  the current bond by the =length= keyword.
+
+  #+begin_src sh :results nil :tangle bonds.chem
+.cstart
+# meso tartaric acid
+HO
+B1: bond 120
+  double bond down ; O
+B2: bond 60 from B1.end
+  front bond up ; OH
+B3: bond 120 from B2.end
+  back bond down ; OH
+B4: bond 60 from B3.end
+  double bond up ; O
+  bond 120 from B4.end ; OH
+
+# nitrogen
+N at B4 + (0.75, 0)
+triple bond right ; N
+  
+# proline
+R1: ring5 pointing down at B4 + (1.50,0) put N at 1
+  H below R1.V1
+B5: bond 120 from R1.V5
+double bond down ; O
+bond 60 from B5.end ; OH
+back bond 60 from R1.V5 ; H
+
+# hydrogen-bond dimer of acetic acid
+# a revision were useful
+B6: bond right at B4 + (3, 0)
+  B7: double bond 30 ; O
+  B8: bond 150 from B6.end ; OH
+  bond dotted right ; O
+  
+  B9: double bond 30
+  bond right
+  B10: bond -30 from B9.end ; HO
+  bond from B7.end to B10.end dotted
+.cend 
+ #+end_src
+
+  [[./bonds.chem.png]]
+
+At present (groff version 1.23.0), there is no support of =front bond=
+and =back bond= or /within/ cyclic structures.  An extension which
+equally would be to the benefit of Haworth projections is in
+preparation by Hans Bezemer.
+
+* depiction of chemical reactions
+
+- It is useful to visually group the source code of the reaction by
+  starting materials, products, plus signs (if needed), and an arrow.
+  The arrow provided by =chem= can be extended by a =bond= (which in
+  turn can be adjusted for =length=).
+
+  Since =chem= is a preprocessor to =pic=, a visual extension by =pic=
+  commands might be possible, too (not yet tested).
+
+  #+begin_src sh :results nil :tangle reaction.chem
+.cstart
+# diene:
+B1: bond down
+   double bond 60 from B1.start
+   double bond 120 from B1.end
+   bond -120 from B1.end
+
+"+" at B1 + (0.3,-0.1)
+
+# dienophile:
+B2: double bond down at B1 + (0.50,0)
+   bond 60 at B2.start
+   double bond up ; O
+
+bond right at B1 + (0.75,-0.1)
+   arrow right
+
+# product:
+R1: ring6 at B1 + (1.55,-0.1) double 5,6
+   bond 60 at R1.V2
+   double bond up ; O
+   bond -120 from R1.V5
+.cend
+  #+end_src
+
+  [[./reaction.chem.png]]
+
+
+* support section
+
+- moderator script
+  
+  #+begin_src bash :tangle moderator.sh
+#!/usr/bin/bash
+# moderator.sh
+
+for file in *.chem
+do
+    chem "$file" | groff -p -Tpdf > "$file".pdf && \
+    pdf2svg "$file".pdf "$file".svg && \
+    cairosvg "$file".svg  -f png --dpi 120 -o "$file".png && \
+    convert "$file".png -trim "$file".png  && \
+    rm "$file".pdf "$file".svg
+done
+  #+end_src
+
+  #+RESULTS:
+
+- literature references
+  - Bentley, J. L.; Jelinski, L. W.; Kernighan, B. W. Chem—a Program
+    for Phototypesetting Chemical Structure Diagrams. /Comput.  Chem./
+    *1987*, /11/ (4),
+    281–297. https://doi.org/10.1016/0097-8485(87)85006-4.
+
+  - Brecher, J. Graphical Representation Standards for Chemical
+    Structure Diagrams (IUPAC Recommendations 2008). /Pure
+    Appl. Chem./ *2008*, /80/ (2),
+    277–410. https://doi.org/10.1351/pac200880020277.
+
+  - Definitive Rules for Nomenclature of Steroids. /Pure Appl. Chem./
+    *1972*, /31/ (1–2), 283–322. https://doi.org/10.1351/pac197231010283.
+

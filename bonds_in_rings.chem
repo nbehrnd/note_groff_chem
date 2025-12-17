@@ -1,0 +1,15 @@
+.cstart
+R1: ring6 put N at 4 double 1,2 3,4 5,6
+  bond 120 from R1.V3
+  bond -120 from R1.V5
+
+R2: ring6 at R1 + (1.00,0) double 1,2 3,4 5,6
+  bond up from R2.V1 ; OCH3
+
+R3: ring6 at R2 + (0.75,0) double 3,4 6,1
+  bond 0 from R3.V1 ; O
+  CH3 right of O  # note this visual adjustment vs R2
+
+R4: ring5 at R3 + (0.75,0) double 2,3 4,5
+  doublebond 0 from R4.V1 ; CH2
+.cend

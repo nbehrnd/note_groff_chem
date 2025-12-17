@@ -1,0 +1,13 @@
+.cstart
+# spirodiketone:
+# <https://en.wikipedia.org/wiki/Spiro_compound#Chirality>
+R1: ring6 pointing right
+  R2: ring6 pointing left
+  doublebond 30 from R1.V6 ; O
+  doublebond 210 from R2.V6 ; O
+
+# sprioketal of cyclohexanone:
+# <https://en.wikipedia.org/wiki/Spiro_compound#Heterocyclic_spiro_compounds>
+R3: ring6 at R2 + (0.75,0)
+  R4: ring5 with .V4 at R3.V2 pointing 20 put O at 3 put O at 5
+.cend
